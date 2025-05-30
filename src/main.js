@@ -15,7 +15,7 @@ class SlotMachine {
     SYMBOL_COUNT: 3,
     REEL_WIDTH: 200,
     SYMBOL_SIZE: 200,
-    SPIN_DURATION_MULTUPLAYER: 200,
+    SPIN_DURATION_MULTUPLAYER: 1000,
     BLUR_STRENGTH: 8,
     PLAY_BUTTON_MARGIN: 100,
     TEXT_STYLE: {
@@ -44,24 +44,20 @@ class SlotMachine {
     },
   }
 
-  // async getSpinDuration() {
-  //   try {
-  //     // const response = await fetch('https://wqeqwewq.iceiy.com/')
-  //     // const data = await response.json()
-  //   } catch (error) {
-  //     console.error('Ошибка запроса:', error)
-  //   }
+  async getSpinDuration() {
+    try {
+      const response = await fetch(
+        'https://victoria-soft-test.iceiy.com/server'
+      )
+      const data = await response.json()
+      const { delay } = await data
 
-  //   const duration = Math.floor(Math.random() * (10 - 5 + 1)) + 5
+      return delay
+    } catch (error) {
+      console.error('Ошибка запроса:', error)
+    }
 
-  //   return
-  // }
-
-  getSpinDuration = () => {
-    return new Promise((resolve) => {
-      const duration = Math.floor(Math.random() * (10 - 5 + 1)) + 5
-      setTimeout(() => resolve({ duration }), duration)
-    })
+    return data.delay
   }
 
   constructor(app) {
@@ -302,8 +298,7 @@ class SlotMachine {
     if (this.running) return
     this.running = true
 
-    const spinDurationData = await this.getSpinDuration()
-    const spinDuration = spinDurationData.duration
+    const spinDuration = await this.getSpinDuration()
 
     this.reels.forEach((reel, index) => {
       const target = reel.position + 10 + index * 5
