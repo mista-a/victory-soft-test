@@ -23,7 +23,6 @@ class SlotMachine {
       fontSize: 36,
       fontStyle: 'italic',
       fontWeight: 'bold',
-      stroke: { color: 'white', width: 5 },
     },
     GRID_STYLE: {
       lineWidth: 10,
@@ -44,11 +43,9 @@ class SlotMachine {
     },
   }
 
-  async getSpinDuration() {
+  async getfetch() {
     try {
-      const response = await fetch(
-        'https://victoria-soft-test.iceiy.com/server'
-      )
+      const response = await fetch('http://localhost/sites/server/')
       const data = await response.json()
       const { delay } = await data
 
@@ -67,6 +64,7 @@ class SlotMachine {
     this.running = false
     this.assetsLoaded = false
     this.assets = {}
+    this.fetch = null
 
     this.initContainers()
     this.loadAssets().then(() => this.setup())
@@ -297,29 +295,30 @@ class SlotMachine {
   async startPlay() {
     if (this.running) return
     this.running = true
-
-    const spinDuration = await this.getSpinDuration()
+    this.fetch = null
 
     this.reels.forEach((reel, index) => {
-      const target = reel.position + 10 + index * 5
       const isLastReel = index === this.reels.length - 1
-
-      this.playButton.text = `старт ${spinDuration * SlotMachine.CONFIG.SPIN_DURATION_MULTUPLAYER}мс`
 
       this.tweenTo(
         reel,
-        'position',
-        target,
-        spinDuration * SlotMachine.CONFIG.SPIN_DURATION_MULTUPLAYER,
-        this.backout(0.5),
-        null,
-        isLastReel ? () => this.onReelsComplete() : null
+        isLastReel ? () => this.onReelsComplete() : null,
+        index,
+        this.backout(2)
       )
+    })
+
+    this.playButton.style.fill = 'grey'
+    await this.getfetch().then((fetch) => {
+      this.fetch = fetch
+      this.playButton.text = `старт ${fetch * SlotMachine.CONFIG.SPIN_DURATION_MULTUPLAYER}мс`
     })
   }
 
   onReelsComplete() {
+    // this.fetch = null
     this.running = false
+    this.playButton.style.fill = 'black'
   }
 
   update() {
@@ -364,43 +363,55 @@ class SlotMachine {
     symbol.x = Math.round((SYMBOL_SIZE - symbol.width) / 2)
   }
 
-  tweenTo(object, property, target, duration, easing, onUpdate, onComplete) {
+  tweenTo(object, onComplete, timeOut, easing) {
     const tween = {
       object,
-      property,
-      startValue: object[property],
-      target,
-      duration,
-      easing,
-      onUpdate,
       onComplete,
-      startTime: Date.now(),
+      timeOut,
+      easing,
     }
 
     this.tweening.push(tween)
     return tween
   }
 
-  updateTweens() {
+  async updateTweens() {
+    let speed = 0.4
     const now = Date.now()
 
-    this.tweening = this.tweening.filter((tween) => {
-      const elapsed = now - tween.startTime
-      const progress = Math.min(1, elapsed / tween.duration)
-
-      tween.object[tween.property] = this.lerp(
-        tween.startValue,
-        tween.target,
-        tween.easing(progress)
-      )
-
-      if (tween.onUpdate) tween.onUpdate(tween)
-
-      if (progress === 1) {
-        if (tween.onComplete) tween.onComplete(tween)
-        return false
+    this.tweening = this.tweening.filter((tween, index) => {
+      if (!tween.flag) {
+        tween.object['position'] = Number(
+          (tween.object['position'] + speed).toFixed(1)
+        )
       }
 
+      if (this.fetch && index === 0) {
+        if (tween.object['position'] % 2 === 0) {
+          if (!tween.flag) {
+            tween.startTime = Date.now()
+            tween.startValue = tween.object['position']
+            tween.target = tween.object['position'] + 2
+          }
+          tween.flag = true
+        }
+      }
+
+      if (tween.flag) {
+        const elapsed = now - tween.startTime
+        const progress = Math.min(1, elapsed / 500)
+
+        tween.object['position'] = this.lerp(
+          tween.startValue,
+          tween.target,
+          tween.easing(progress)
+        )
+
+        if (progress === 1) {
+          if (tween.onComplete) tween.onComplete(tween)
+          return false
+        }
+      }
       return true
     })
   }
